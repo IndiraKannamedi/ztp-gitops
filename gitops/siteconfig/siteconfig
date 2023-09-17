@@ -1,0 +1,174 @@
+# example-node[12345]-bmh-secret & assisted-deployment-pull-secret need to be created under same namespace example-standard
+---
+apiVersion: ran.openshift.io/v1
+kind: SiteConfig
+metadata:
+  name: "compact"
+  namespace: "compact"
+spec:
+  baseDomain: "dcws.lab"
+  pullSecretRef:
+    name: "assisted-deployment-pull-secret"
+  clusterImageSetNameRef: "img4.12.17-x86-64-appsub"
+  sshPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDACPhGUOyQeCX0X6syryCOL1c6s9Beq3ZBosEcPkoscs/fCA4oHg4taCZuBbepijR200t4SjLrGLSgFzFECoZk3eQ89WiAVl7G1LMT2bnWk/ia1tlud5v/eZ9GdsNgIWeYOvA52Hd9YsKArjjeufahQVj65Brb2xvHg2zhfLJzZqhaEG7cWzVitwRLxj7wm0Xa2rCGkMIT9NbN93CSF09cI+I0mCfedt9fsxfrJijB5uoAzvcos86xXORvEm2MOjM8t5flQ4yQYoASBCi/hG+JV2dWLC/H0T3WCcEF8uryG/IuFcq9VwAopzlqbbKIjxIvuLw1ZsnlCDbI4ZEpuyYgusGrQW6up3yYHclaLa5ucoPts3gfsPG3hDlk0L4BfJmIshciJzKwHQXUZJhjn8I6DDsB0ymkXmlV6xZ101kxOcYu9H/iNHguLgT2jHMlxtK4jTYiOU3Y0aRi8/cME5BhH+mE8JhtOb16WtKsEUPMIBFQHuB569pXQ0d8rxQVl5U= root@bastion-win.dcws.lab"
+  # Optionally; This can be used to configure desired BIOS setting on all hosts in this site:
+  #biosConfigRef:
+  #  filePath: "example-hw.profile"
+  clusters:
+  - clusterName: "iztp-compact"
+    networkType: "OVNKubernetes"
+    clusterLabels:
+      # These example cluster labels correspond to the bindingRules in the PolicyGenTemplate examples in ../policygentemplates:
+      # ../policygentemplates/common-ranGen.yaml will apply to all clusters with 'common: true'
+      common: true
+      # ../policygentemplates/group-du-standard-ranGen.yaml will apply to all clusters with 'group-du-standard: ""'
+      group-du-3node: ""
+      # ../policygentemplates/example-multinode-site.yaml will apply to all clusters with 'sites: "example-multinode"'
+      # Normally this should match or contain the cluster name so it only applies to a single cluster
+      sites : "compact"
+    clusterNetwork:
+      - cidr: 10.128.0.0/14
+        hostPrefix: 24
+    # For 3-node and standard clusters with static IPs, the API and Ingress IPs must be configured here
+    apiVIP: 192.168.32.224
+    ingressVIP: 192.168.32.225
+    serviceNetwork:
+      - 172.30.0.0/16
+#    machineNetwork:
+#      - cidr: 192.168.32.0/24        
+        #    additionalNTPSources:
+        #      - 1111:2222:3333:4444::2
+    # Optionally; This can be used to override the KlusterletAddonConfig that is created for this cluster:
+    #crTemplates:
+    #  KlusterletAddonConfig: "KlusterletAddonConfigOverride.yaml"
+    nodes:
+      - hostName: "iztp1.dcws.lab"
+        role: "master"
+        bmcAddress: "idrac-virtualmedia://172.16.0.25/redfish/v1/Systems/System.Embedded.1"
+        bmcCredentialsName:
+          name: "ztp-node1-bmh-secret"
+        bootMACAddress: "B8:CE:F6:13:09:C4"
+        # Use UEFISecureBoot to enable secure boot for this node
+        bootMode: "UEFI"
+        rootDeviceHints:
+          deviceName: '/dev/nvme0n1'
+        nodeNetwork: 
+          interfaces:
+            - name: eno12399
+              macAddress: "B8:CE:F6:13:09:C4"
+            - name: eno12409
+              macAddress: "B8:CE:F6:13:09:C5"
+          config:
+            interfaces:
+            - name: bond0
+              type: bond
+              state: up
+              ipv4:
+                address:
+                - ip: 192.168.32.25
+                  prefix-length: 24
+                enabled: true
+              link-aggregation:
+                mode: 802.3ad
+                port:
+                - eno12399
+                - eno12409
+            dns-resolver:
+              config:
+                search:
+                - dcws.lab
+                server:
+                - 192.168.32.20
+            routes:
+              config:
+                - destination: 0.0.0.0/0
+                  next-hop-address: 192.168.32.1
+                  next-hop-interface: bond0
+                  table-id: 254        
+      - hostName: "iztp2.dcws.lab"
+        role: "master"
+        bmcAddress: "idrac-virtualmedia://172.16.0.26/redfish/v1/Systems/System.Embedded.1"
+        bmcCredentialsName:
+          name: "ztp-node2-bmh-secret"
+        bootMACAddress: "B8:CE:F6:13:09:D4"
+        # Use UEFISecureBoot to enable secure boot for this node
+        bootMode: "UEFI"
+        rootDeviceHints:
+          deviceName: '/dev/sdc'
+        nodeNetwork:
+          interfaces:
+            - name: eno12399
+              macAddress: "B8:CE:F6:13:09:D4"
+            - name: eno12409
+              macAddress: "B8:CE:F6:13:09:D5"
+          config:
+            interfaces:
+            - name: bond0
+              type: bond
+              state: up
+              ipv4:
+                address:
+                - ip: 192.168.32.26
+                  prefix-length: 24
+                enabled: true
+              link-aggregation:
+                mode: 802.3ad
+                port:
+                - eno12399
+                - eno12409
+            dns-resolver:
+              config:
+                search:
+                - dcws.lab
+                server:
+                - 192.168.32.20
+            routes:
+              config:
+                - destination: 0.0.0.0/0
+                  next-hop-address: 192.168.32.1
+                  next-hop-interface: bond0
+                  table-id: 254
+      - hostName: "iztp3.dcws.lab"
+        role: "master"
+        bmcAddress: "idrac-virtualmedia://172.16.0.30/redfish/v1/Systems/System.Embedded.1"
+        bmcCredentialsName:
+          name: "ztp-node3-bmh-secret"
+        bootMACAddress: "B8:CE:F6:0E:BF:86"
+        # Use UEFISecureBoot to enable secure boot for this node
+        bootMode: "UEFI"
+        rootDeviceHints:
+          deviceName: '/dev/sdb'
+        nodeNetwork:
+          interfaces:
+            - name: eno12399
+              macAddress: "B8:CE:F6:0E:BF:86"
+            - name: eno12409
+              macAddress: "B8:CE:F6:0E:BF:87"
+          config:
+            interfaces:
+            - name: bond0
+              type: bond
+              state: up
+              ipv4:
+                address:
+                - ip: 192.168.32.30
+                  prefix-length: 24
+                enabled: true
+              link-aggregation:
+                mode: 802.3ad
+                port:
+                - eno12399
+                - eno12409
+            dns-resolver:
+              config:
+                search:
+                - dcws.lab
+                server:
+                - 192.168.32.20
+            routes:
+              config:
+                - destination: 0.0.0.0/0
+                  next-hop-address: 192.168.32.1
+                  next-hop-interface: bond0
+                  table-id: 254
+                

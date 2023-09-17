@@ -1,4 +1,5 @@
 # example-node[12345]-bmh-secret & assisted-deployment-pull-secret need to be created under same namespace example-standard
+# ink
 ---
 apiVersion: ran.openshift.io/v1
 kind: SiteConfig
